@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyVault Admin | Secure Access</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #09090b; color: #fafafa; }
+        .glass-card { background: rgba(24, 24, 27, 0.8); border: 1px solid rgba(39, 39, 42, 1); backdrop-filter: blur(10px); }
+        .sidebar-link:hover, .sidebar-link.active { background: #27272a; border-right: 4px solid #3b82f6; }
+        .hidden { display: none !important; }
+        input:focus { border-color: #3b82f6; ring: 2px; ring-color: #3b82f6; outline: none; }
+    </style>
+</head>
+<body>
+
+    <!-- 🔐 LOGIN SCREEN -->
+    <div id="login-screen" class="fixed inset-0 z-[100] bg-zinc-950 flex items-center justify-center p-6">
+        <div class="glass-card w-full max-w-md p-8 rounded-3xl shadow-2xl">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent">StudyVault</h1>
+                <p class="text-zinc-500 mt-2">Admin Authentication Required</p>
+            </div>
+            
+            <form id="login-form" class="space-y-5">
+                <div>
+                    <label class="block text-sm text-zinc-400 mb-2">Admin Email</label>
+                    <input type="email" id="admin-email" required class="w-full bg-zinc-900 border border-zinc-800 p-3 rounded-xl" placeholder="admin@studyvault.com">
+                </div>
+                <div>
+                    <label class="block text-sm text-zinc-400 mb-2">Password</label>
+                    <input type="password" id="admin-password" required class="w-full bg-zinc-900 border border-zinc-800 p-3 rounded-xl" placeholder="••••••••">
+                </div>
+                <div id="login-error" class="text-red-500 text-sm hidden text-center italic font-medium"></div>
+                <button type="submit" id="login-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex justify-center items-center">
+                    Login to Dashboard
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 📊 MAIN ADMIN PANEL (Hidden until Auth) -->
+    <div id="admin-panel" class="hidden flex h-screen overflow-hidden">
+        
+        <!-- SIDEBAR -->
+        <aside class="w-64 glass-card h-full flex flex-col hidden md:flex">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent">StudyVault</h1>
+                <p class="text-xs text-zinc-500">Master Control</p>
+            </div>
+            
+            <nav class="flex-1 px-4 space-y-2 mt-4">
+                <button onclick="showSection('dashboard')" class="sidebar-link active flex items-center w-full p-3 rounded-lg transition-all">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5 mr-3"></i> Dashboard
+                </button>
+                <button onclick="showSection('content')" class="sidebar-link flex items-center w-full p-3 rounded-lg transition-all">
+                    <i data-lucide="file-text" class="w-5 h-5 mr-3"></i> Content
+                </button>
+                <button onclick="showSection('users')" class="sidebar-link flex items-center w-full p-3 rounded-lg transition-all">
+                    <i data-lucide="users" class="w-5 h-5 mr-3"></i> Users
+                </button>
+                <button onclick="showSection('payments')" class="sidebar-link flex items-center w-full p-3 rounded-lg transition-all">
+                    <i data-lucide="credit-card" class="w-5 h-5 mr-3"></i> Revenue
+                </button>
+                <button onclick="showSection('notifications')" class="sidebar-link flex items-center w-full p-3 rounded-lg transition-all">
+                    <i data-lucide="bell" class="w-5 h-5 mr-3"></i> Alerts
+                </button>
+            </nav>
+
+            <div class="p-4 space-y-2 border-t border-zinc-800">
+                <div class="flex items-center p-2 text-xs text-zinc-500">
+                    <div class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                    Admin Session Active
+                </div>
+                <button onclick="adminLogout()" class="w-full flex items-center p-3 text-red-500 hover:bg-red-500/10 rounded-lg transition-all">
+                    <i data-lucide="log-out" class="w-5 h-5 mr-3"></i> Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN VIEWPORT -->
+        <main class="flex-1 overflow-y-auto p-8 h-screen pb-20">
+            <!-- DASHBOARD VIEW -->
+            <div id="section-dashboard" class="admin-section space-y-8">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div class="glass-card p-6 rounded-2xl">
+                        <p class="text-zinc-400 text-sm">Users</p>
+                        <h2 id="stat-users" class="text-3xl font-bold mt-2">--</h2>
+                    </div>
+                    <div class="glass-card p-6 rounded-2xl border-l-4 border-blue-500">
+                        <p class="text-zinc-400 text-sm">Content Items</p>
+                        <h2 id="stat-content" class="text-3xl font-bold mt-2">--</h2>
+                    </div>
+                    <div class="glass-card p-6 rounded-2xl border-l-4 border-green-500">
+                        <p class="text-zinc-400 text-sm">Revenue</p>
+                        <h2 id="stat-revenue" class="text-3xl font-bold mt-2">₹0</h2>
+                    </div>
+                    <div class="glass-card p-6 rounded-2xl">
+                        <p class="text-zinc-400 text-sm">Global Ads</p>
+                        <button onclick="toggleAds()" id="ads-toggle-btn" class="mt-2 bg-green-500 text-black px-4 py-1 rounded-full text-xs font-bold">ENABLED</button>
+                    </div>
+                </div>
+
+                <div class="glass-card p-8 rounded-2xl">
+                    <h3 class="text-xl font-bold mb-4 italic">Welcome, Master Admin.</h3>
+                    <p class="text-zinc-400">All updates made here reflect instantly in the user application via real-time Firebase sync.</p>
+                </div>
+            </div>
+
+            <!-- CONTENT SECTION -->
+            <div id="section-content" class="admin-section hidden space-y-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold">Content Management</h2>
+                    <button onclick="openModal('content-modal')" class="bg-blue-600 px-4 py-2 rounded-lg flex items-center">
+                        <i data-lucide="plus" class="w-4 h-4 mr-2"></i> New Content
+                    </button>
+                </div>
+                <div class="glass-card rounded-2xl overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-zinc-900/50">
+                            <tr><th class="p-4">Title</th><th class="p-4">Type</th><th class="p-4">Coins</th><th class="p-4">Actions</th></tr>
+                        </thead>
+                        <tbody id="content-table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- USERS SECTION -->
+            <div id="section-users" class="admin-section hidden space-y-6">
+                <h2 class="text-2xl font-bold">User Database</h2>
+                <div class="glass-card rounded-2xl overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-zinc-900/50">
+                            <tr><th class="p-4">Email</th><th class="p-4">Coins</th><th class="p-4">Status</th><th class="p-4">Actions</th></tr>
+                        </thead>
+                        <tbody id="users-table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL: ADD CONTENT -->
+    <div id="content-modal" class="fixed inset-0 bg-black/90 hidden items-center justify-center p-4 z-[200]">
+        <div class="glass-card w-full max-w-xl p-8 rounded-3xl">
+            <h3 class="text-xl font-bold mb-6">Add New File</h3>
+            <form id="content-form" class="space-y-4">
+                <input type="text" id="con-title" placeholder="Title" class="w-full bg-zinc-900 border border-zinc-800 p-3 rounded-lg" required>
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="text" id="con-cat" placeholder="Category" class="bg-zinc-900 border border-zinc-800 p-3 rounded-lg" required>
+                    <input type="text" id="con-course" placeholder="Course" class="bg-zinc-900 border border-zinc-800 p-3 rounded-lg" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <select id="con-type" class="bg-zinc-900 border border-zinc-800 p-3 rounded-lg">
+                        <option value="Free">Free</option>
+                        <option value="Premium">Premium</option>
+                    </select>
+                    <input type="number" id="con-coins" placeholder="Coins Required" class="bg-zinc-900 border border-zinc-800 p-3 rounded-lg">
+                </div>
+                <input type="url" id="con-thumb" placeholder="Thumbnail URL" class="w-full bg-zinc-900 border border-zinc-800 p-3 rounded-lg" required>
+                <input type="url" id="con-file" placeholder="File URL" class="w-full bg-zinc-900 border border-zinc-800 p-3 rounded-lg" required>
+                <div class="flex gap-4 pt-4">
+                    <button type="submit" class="flex-1 bg-blue-600 py-3 rounded-xl font-bold">Save to Database</button>
+                    <button type="button" onclick="closeModal('content-modal')" class="flex-1 bg-zinc-800 py-3 rounded-xl">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CORE LOGIC & FIREBASE -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, query, orderBy, increment } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+
+        // 🔥 FIREBASE CONFIGURATION
+        const firebaseConfig = {
+             apiKey: "AIzaSyBwOHGpUV9M5mN_0ePUICEvM7ItWusj6ds",
+  authDomain: "your-first-impressions.firebaseapp.com",
+  projectId: "your-first-impressions",
+  storageBucket: "your-first-impressions.firebasestorage.app",
+  messagingSenderId: "498957373098",
+  appId: "1:498957373098:web:ce4125a9d135e7dcd38ad3",
+  measurementId: "G-0QTMEWL8SM"
+};
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- AUTH SYSTEM ---
+        const loginForm = document.getElementById('login-form');
+        const loginError = document.getElementById('login-error');
+        const loginBtn = document.getElementById('login-btn');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            loginBtn.innerText = "Verifying...";
+            loginError.classList.add('hidden');
+
+            const email = document.getElementById('admin-email').value;
+            const password = document.getElementById('admin-password').value;
+
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // ROLE CHECK
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                
+                if (userDoc.exists() && userDoc.data().role === 'admin') {
+                    // Success handled by onAuthStateChanged
+                } else {
+                    await signOut(auth);
+                    throw new Error("Access Denied: You do not have Admin privileges.");
+                }
+            } catch (error) {
+                loginError.innerText = error.message;
+                loginError.classList.remove('hidden');
+                loginBtn.innerText = "Login to Dashboard";
+            }
+        });
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                if (userDoc.exists() && userDoc.data().role === 'admin') {
+                    document.getElementById('login-screen').classList.add('hidden');
+                    document.getElementById('admin-panel').classList.remove('hidden');
+                    initDashboard();
+                } else {
+                    handleLogoutState();
+                }
+            } else {
+                handleLogoutState();
+            }
+        });
+
+        function handleLogoutState() {
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('admin-panel').classList.add('hidden');
+            loginBtn.innerText = "Login to Dashboard";
+        }
+
+        window.adminLogout = () => {
+            signOut(auth);
+        };
+
+        // --- DASHBOARD REAL-TIME LOGIC ---
+        function initDashboard() {
+            lucide.createIcons();
+            
+            // Stats Listeners
+            onSnapshot(collection(db, "users"), snap => {
+                document.getElementById('stat-users').innerText = snap.size;
+                renderUsers(snap);
+            });
+            onSnapshot(collection(db, "content"), snap => {
+                document.getElementById('stat-content').innerText = snap.size;
+                renderContent(snap);
+            });
+            onSnapshot(collection(db, "payments"), snap => {
+                let total = 0;
+                snap.forEach(d => total += d.data().amount || 0);
+                document.getElementById('stat-revenue').innerText = `₹${total}`;
+            });
+        }
+
+        // --- RENDER CONTENT ---
+        function renderContent(snap) {
+            const table = document.getElementById('content-table');
+            table.innerHTML = "";
+            snap.forEach(d => {
+                const data = d.data();
+                table.innerHTML += `
+                    <tr class="border-b border-zinc-800">
+                        <td class="p-4">${data.title}</td>
+                        <td class="p-4 text-xs font-bold text-blue-500">${data.type}</td>
+                        <td class="p-4">${data.coins || 0}</td>
+                        <td class="p-4">
+                            <button onclick="deleteItem('${d.id}')" class="text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        // --- RENDER USERS ---
+        function renderUsers(snap) {
+            const table = document.getElementById('users-table');
+            table.innerHTML = "";
+            snap.forEach(d => {
+                const data = d.data();
+                table.innerHTML += `
+                    <tr class="border-b border-zinc-800">
+                        <td class="p-4">${data.email}</td>
+                        <td class="p-4 text-yellow-500 font-bold">${data.coins || 0}</td>
+                        <td class="p-4 text-xs">${data.isPremium ? '💎 PRO' : 'FREE'}</td>
+                        <td class="p-4 space-x-2">
+                            <button onclick="modifyCoins('${d.id}', 100)" class="bg-zinc-800 px-2 py-1 rounded text-xs">+100</button>
+                            <button onclick="modifyCoins('${d.id}', -100)" class="bg-zinc-800 px-2 py-1 rounded text-xs">-100</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // --- GLOBAL ACTIONS ---
+        window.modifyCoins = async (id, val) => {
+            await updateDoc(doc(db, "users", id), { coins: increment(val) });
+        };
+
+        window.deleteItem = async (id) => {
+            if(confirm('Permanently delete this content?')) {
+                await deleteDoc(doc(db, "content", id));
+            }
+        };
+
+        window.toggleAds = async () => {
+            const btn = document.getElementById('ads-toggle-btn');
+            const newState = btn.innerText === 'ENABLED' ? false : true;
+            await updateDoc(doc(db, "config", "ads"), { enabled: newState });
+            btn.innerText = newState ? 'ENABLED' : 'DISABLED';
+            btn.className = newState ? 'mt-2 bg-green-500 text-black px-4 py-1 rounded-full text-xs font-bold' : 'mt-2 bg-red-500 text-white px-4 py-1 rounded-full text-xs font-bold';
+        };
+
+        // UI HELPERS
+        window.showSection = (id) => {
+            document.querySelectorAll('.admin-section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(`section-${id}`).classList.remove('hidden');
+            document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+        };
+
+        window.openModal = (id) => document.getElementById(id).classList.replace('hidden', 'flex');
+        window.closeModal = (id) => document.getElementById(id).classList.replace('flex', 'hidden');
+
+        // FORM SUBMISSION
+        document.getElementById('content-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const data = {
+                title: document.getElementById('con-title').value,
+                category: document.getElementById('con-cat').value,
+                course: document.getElementById('con-course').value,
+                type: document.getElementById('con-type').value,
+                coins: parseInt(document.getElementById('con-coins').value) || 0,
+                thumbnail: document.getElementById('con-thumb').value,
+                fileUrl: document.getElementById('con-file').value,
+                createdAt: new Date()
+            };
+            await addDoc(collection(db, "content"), data);
+            closeModal('content-modal');
+            e.target.reset();
+        };
+
+    </script>
+</body>
+</html>
